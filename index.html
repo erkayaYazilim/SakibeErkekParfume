@@ -203,44 +203,57 @@
      * @param {number} pageNum - Çizilecek sayfa
      * @param {boolean} canHidePreloader - İlk sayfa için preloader kapatılabilir
      */
-    async function renderPage(pageNum, canHidePreloader) {
-      const page = await pdfDoc.getPage(pageNum);
+     async function renderPage(pageNum, canHidePreloader) {
+  const page = await pdfDoc.getPage(pageNum);
 
-      // PDF kapsayıcısı
-      const container = document.getElementById('pdfContainer');
-      
-      // Sayfa wrapper
-      const pageDiv = document.createElement('div');
-      pageDiv.className = 'pdf-page-container';
+  // PDF kapsayıcısı
+  const container = document.getElementById('pdfContainer');
+  
+  // Sayfa wrapper'ı
+  const pageDiv = document.createElement('div');
+  pageDiv.className = 'pdf-page-container';
 
-      // Canvas
-      const canvas = document.createElement('canvas');
-      canvas.className = 'pdf-canvas';
-      pageDiv.appendChild(canvas);
+  // Canvas oluşturulması
+  const canvas = document.createElement('canvas');
+  canvas.className = 'pdf-canvas';
+  pageDiv.appendChild(canvas);
 
-      container.appendChild(pageDiv);
+  container.appendChild(pageDiv);
 
-      // Ölçek hesaplama
-      const viewport = page.getViewport({ scale: 1 });
-      const containerWidth = container.clientWidth - 40;
-      const scale = containerWidth / viewport.width;
-      const scaledViewport = page.getViewport({ scale });
+  // Temel ölçek hesabı
+  const viewport = page.getViewport({ scale: 1 });
+  const containerWidth = container.clientWidth - 40;
+  const scale = containerWidth / viewport.width;
+  const scaledViewport = page.getViewport({ scale });
 
-      canvas.width = scaledViewport.width;
-      canvas.height = scaledViewport.height;
+  // Cihaz piksel oranını yakala
+  const outputScale = window.devicePixelRatio || 1;
 
-      const ctx = canvas.getContext('2d');
-      await page.render({
-        canvasContext: ctx,
-        viewport: scaledViewport
-      }).promise;
+  // Canvas çözünürlüğünü cihaz DPI'sına göre ayarla
+  canvas.width = scaledViewport.width * outputScale;
+  canvas.height = scaledViewport.height * outputScale;
 
-      // Eğer ilk sayfaysa ve henüz kapatılmadıysa preloader'ı kapat
-      if (canHidePreloader && !firstPageRendered) {
-        firstPageRendered = true;
-        hidePreloader();
-      }
-    }
+  // CSS'de görünüm boyutunu ayarla (fiziksel piksel sayısı farklı olabilir)
+  canvas.style.width = scaledViewport.width + "px";
+  canvas.style.height = scaledViewport.height + "px";
+
+  // Çizim bağlamını ayarla
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(outputScale, 0, 0, outputScale, 0, 0);
+
+  // Sayfayı render et
+  await page.render({
+    canvasContext: ctx,
+    viewport: scaledViewport
+  }).promise;
+
+  // Eğer ilk sayfaysa preloader kapatılıyor
+  if (canHidePreloader && !firstPageRendered) {
+    firstPageRendered = true;
+    hidePreloader();
+  }
+}
+
 
     function hidePreloader() {
       const preloader = document.getElementById('preloader');
