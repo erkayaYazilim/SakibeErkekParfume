@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SAKİBE TEKİN PERFUME - Exclusive Collection</title>
+
+  <!-- PDF.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.5.141/build/pdf.min.js"></script>
+
+  <!-- Yazı Tipleri -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary-black: #1a1a1a;
+      --luxe-gold: #D4AF37;
+      --pure-white: #ffffff;
+    }
+    /* Sıfırlama */
+    * {
+      margin: 0; padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: var(--pure-white);
+      font-family: 'Montserrat', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Preloader (Parfüm Şişesi Animasyonu) */
+    .preloader {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--pure-white);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      transition: opacity 0.6s ease;
+    }
+    .perfume-loader {
+      width: 120px;
+      height: 220px;
+      position: relative;
+    }
+    .gold-bottle {
+      position: absolute;
+      bottom: 0;
+      width: 100%;
+      height: 85%;
+      background: linear-gradient(45deg, var(--luxe-gold) 0%, #FFD700 50%, var(--luxe-gold) 100%);
+      border-radius: 15px 15px 30px 30px;
+      box-shadow: 0 10px 30px rgba(212,175,55,0.3);
+      animation: bottleGlow 2s ease-in-out infinite;
+    }
+    .bottle-neck {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 30px;
+      height: 40px;
+      background: var(--primary-black);
+      border-radius: 5px;
+    }
+    .splash {
+      position: absolute;
+      top: -50px;
+      left: 50%;
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.9);
+      border-radius: 50%;
+      opacity: 0;
+      animation: perfumeSplash 2s infinite;
+    }
+    @keyframes bottleGlow {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.9;
+      }
+      50% {
+        transform: scale(1.02);
+        opacity: 1;
+      }
+    }
+    @keyframes perfumeSplash {
+      0% {
+        transform: translate(-50%, 0) scale(0);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(-50%, -100px) scale(2);
+        opacity: 0;
+      }
+    }
+
+    /* Header (Üst Kısım) */
+    .header-container {
+      text-align: center;
+      background: var(--primary-black);
+      color: var(--luxe-gold);
+      padding: 1.4rem 1rem;
+      position: relative;
+    }
+    .title-animation {
+      font-family: 'Cinzel Decorative', cursive;
+      font-size: 2rem;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: titleReveal 0.8s ease-out 0.2s forwards;
+    }
+    @keyframes titleReveal {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* PDF Container */
+    #pdfContainer {
+      max-width: 1200px;
+      margin: 1rem auto;
+      padding: 1rem;
+    }
+    .pdf-page-container {
+      margin-bottom: 1.2rem;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      border-radius: 8px;
+      background: var(--pure-white);
+      overflow: hidden;
+    }
+    .pdf-canvas {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    @media (max-width: 768px) {
+      .title-animation {
+        font-size: 1.6rem;
+      }
+      .pdf-page-container {
+        margin-bottom: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Preloader -->
+  <div class="preloader" id="preloader">
+    <div class="perfume-loader">
+      <div class="gold-bottle"></div>
+      <div class="bottle-neck"></div>
+      <div class="splash"></div>
+    </div>
+  </div>
+
+  <!-- Üst Kısım -->
+  <div class="header-container">
+    <h1 class="title-animation">SAKİBE TEKİN PERFUME</h1>
+  </div>
+
+  <!-- PDF Gösterim Alanı -->
+  <div id="pdfContainer"></div>
+
+  <script>
+    // PDF.js Worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.5.141/build/pdf.worker.min.js";
+
+    const pdfURL = "./qrpdf.pdf"; // Kataloğunuzun PDF dosyası
+    let pdfDoc = null;
+    let firstPageRendered = false; // İlk sayfa çizildi mi?
+
+    window.addEventListener('load', () => {
+      loadPDF();
+    });
+
+    async function loadPDF() {
+      try {
+        // PDF Belgesini indir ve hazırla
+        pdfDoc = await pdfjsLib.getDocument(pdfURL).promise;
+
+        // 1) İlk sayfa hızlı render
+        await renderPage(1, true); // 'true' => preloader kapamak için kontrol
+
+        // 2) Kalan sayfaları arka planda yükle
+        for(let pageNum = 2; pageNum <= pdfDoc.numPages; pageNum++){
+          renderPage(pageNum, false);
+        }
+      } catch (error) {
+        console.error("PDF yükleme hatası:", error);
+        hidePreloader(); // Hata olsa da preloader kapanmalı
+      }
+    }
+
+    /**
+     * Tek bir sayfayı ekrana çizme fonksiyonu.
+     * @param {number} pageNum - Çizilecek sayfa
+     * @param {boolean} canHidePreloader - İlk sayfa için preloader kapatılabilir
+     */
+    async function renderPage(pageNum, canHidePreloader) {
+      const page = await pdfDoc.getPage(pageNum);
+
+      // PDF kapsayıcısı
+      const container = document.getElementById('pdfContainer');
+      
+      // Sayfa wrapper
+      const pageDiv = document.createElement('div');
+      pageDiv.className = 'pdf-page-container';
+
+      // Canvas
+      const canvas = document.createElement('canvas');
+      canvas.className = 'pdf-canvas';
+      pageDiv.appendChild(canvas);
+
+      container.appendChild(pageDiv);
+
+      // Ölçek hesaplama
+      const viewport = page.getViewport({ scale: 1 });
+      const containerWidth = container.clientWidth - 40;
+      const scale = containerWidth / viewport.width;
+      const scaledViewport = page.getViewport({ scale });
+
+      canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+
+      const ctx = canvas.getContext('2d');
+      await page.render({
+        canvasContext: ctx,
+        viewport: scaledViewport
+      }).promise;
+
+      // Eğer ilk sayfaysa ve henüz kapatılmadıysa preloader'ı kapat
+      if (canHidePreloader && !firstPageRendered) {
+        firstPageRendered = true;
+        hidePreloader();
+      }
+    }
+
+    function hidePreloader() {
+      const preloader = document.getElementById('preloader');
+      preloader.style.opacity = '0';
+      setTimeout(() => {
+        preloader.style.display = 'none';
+      }, 600);
+    }
+  </script>
+</body>
+</html>
